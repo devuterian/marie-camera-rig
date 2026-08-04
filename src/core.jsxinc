@@ -1,0 +1,208 @@
+/*
+marierie Camera Rig
+Original implementation for Adobe After Effects 2020+
+MIT License
+
+Design goals:
+- One clean Shape Layer controller instead of a stack of nulls.
+- Preserve native camera keyframes and add offsets procedurally.
+- Two-target blending, auto aim, auto focus, lens override, drift, shake, and impact markers.
+- Dockable ScriptUI panel with one-click build/update/repair/remove actions.
+- Existing expressions are backed up into the controller layer comment and restored on removal.
+*/
+
+(function marierieCameraRig(thisObj) {
+    var SCRIPT_NAME = "marierie Camera Rig";
+    var VERSION = "1.0.0";
+    var SIG = "// MCR " + VERSION;
+    var CTRL_PREFIX = "[MCR] ";
+    var TARGET_PREFIX = "[MCR Target] ";
+
+    var FX = {
+        CAMERA: "MCR | Camera Layer",
+        ENABLE: "MCR | Enable Rig",
+        OFFSET_SPACE: "MCR | Offset Space",
+        POSITION: "MCR | Position Offset",
+        ROT_X: "MCR | Rotation X",
+        ROT_Y: "MCR | Rotation Y",
+        ROT_Z: "MCR | Rotation Z",
+
+        TARGET_A: "MCR | Target A",
+        TARGET_B: "MCR | Target B",
+        TARGET_BLEND: "MCR | Target Blend",
+        AUTO_AIM: "MCR | Auto Aim",
+        AUTO_FOCUS: "MCR | Auto Focus",
+        FOCUS_OFFSET: "MCR | Focus Offset",
+        MANUAL_FOCUS: "MCR | Manual Focus",
+
+        DRIFT_ENABLE: "MCR | Drift",
+        DRIFT_POS: "MCR | Drift Position",
+        DRIFT_ROT: "MCR | Drift Rotation",
+        DRIFT_SPEED: "MCR | Drift Speed",
+        DRIFT_SEED: "MCR | Drift Seed",
+
+        SHAKE_PRESET: "MCR | Shake Preset",
+        SHAKE_INTENSITY: "MCR | Shake Intensity",
+        SHAKE_SPEED: "MCR | Shake Speed",
+        SHAKE_SEED: "MCR | Shake Seed",
+        CUSTOM_POS: "MCR | Custom Position",
+        CUSTOM_ROT: "MCR | Custom Rotation",
+        CUSTOM_FREQ: "MCR | Custom Frequency",
+
+        IMPACT_POS: "MCR | Impact Position",
+        IMPACT_ROT: "MCR | Impact Rotation",
+        IMPACT_DECAY: "MCR | Impact Decay",
+        IMPACT_FREQ: "MCR | Impact Frequency",
+
+        LENS_ENABLE: "MCR | Lens Override",
+        FOCAL_LENGTH: "MCR | Focal Length (mm)",
+        ZOOM_OFFSET: "MCR | Zoom Offset",
+        DOF_ENABLE: "MCR | Enable DOF",
+        APERTURE: "MCR | Aperture",
+        BLUR_LEVEL: "MCR | Blur Level"
+    };
+
+    function alertError(message) {
+        alert(SCRIPT_NAME + "\n\n" + message);
+    }
+
+    function isComp(item) {
+        return item && item instanceof CompItem;
+    }
+
+    function getActiveComp() {
+        var item = app.project.activeItem;
+        return isComp(item) ? item : null;
+    }
+
+    function isCamera(layer) {
+        return layer && layer instanceof CameraLayer;
+    }
+
+    function escExpressionString(value) {
+        return String(value)
+            .replace(/\\/g, "\\\\")
+            .replace(/"/g, '\\"')
+            .replace(/\r/g, "\\r")
+            .replace(/\n/g, "\\n");
+    }
+
+    function effectGroup(layer) {
+        return layer.property("ADBE Effect Parade");
+    }
+
+    function getEffect(layer, name) {
+        if (!layer) return null;
+        var parade = effectGroup(layer);
+        return parade ? parade.property(name) : null;
+    }
+
+    function effectValue(layer, name, fallback) {
+        try {
+            var fx = getEffect(layer, name);
+            return fx ? fx.property(1).value : fallback;
+        } catch (e) {
+            return fallback;
+        }
+    }
+
+    function setEffectValue(layer, name, value) {
+        var fx = getEffect(layer, name);
+        if (!fx) return false;
+        try {
+            fx.property(1).setValue(value);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function addEffect(layer, matchName, name, defaultValue, menuItems) {
+        var existing = getEffect(layer, name);
+        if (existing) return existing;
+
+        var parade = effectGroup(layer);
+        if (!parade || !parade.canAddProperty(matchName)) {
+            throw new Error("Cannot add effect: " + name + " (" + matchName + ")");
+        }
+
+        var fx = parade.addProperty(matchName);
+        fx.name = name;
+
+        if (menuItems && matchName === "ADBE Dropdown Control") {
+            var menuProp = fx.property(1);
+            menuProp = menuProp.setPropertyParameters(menuItems);
+            if (defaultValue !== undefined && defaultValue !== null) {
+                menuProp.setValue(defaultValue);
+            }
+        } else if (defaultValue !== undefined && defaultValue !== null) {
+            fx.property(1).setValue(defaultValue);
+        }
+
+        return fx;
+    }
+
+    function ensureControllerEffects(controller, camera, comp) {
+        var camOptions = camera.property("ADBE Camera Options Group");
+        var zoom = camOptions.property("ADBE Camera Zoom").value;
+        var focus = camOptions.property("ADBE Camera Focus Distance").value;
+        var aperture = camOptions.property("ADBE Camera Aperture").value;
+        var blur = camOptions.property("ADBE Camera Blur Level").value;
+        var focal = Math.max(1, zoom * 36.0 / comp.width);
+
+        addEffect(controller, "ADBE Layer Control", FX.CAMERA, camera.index);
+        setEffectValue(controller, FX.CAMERA, camera.index);
+
+        addEffect(controller, "ADBE Checkbox Control", FX.ENABLE, 1);
+        addEffect(controller, "ADBE Dropdown Control", FX.OFFSET_SPACE, 1, [
+            "World",
+            "Camera Local"
+        ]);
+        addEffect(controller, "ADBE Point3D Control", FX.POSITION, [0, 0, 0]);
+        addEffect(controller, "ADBE Angle Control", FX.ROT_X, 0);
+        addEffect(controller, "ADBE Angle Control", FX.ROT_Y, 0);
+        addEffect(controller, "ADBE Angle Control", FX.ROT_Z, 0);
+
+        addEffect(controller, "ADBE Layer Control", FX.TARGET_A, 0);
+        addEffect(controller, "ADBE Layer Control", FX.TARGET_B, 0);
+        addEffect(controller, "ADBE Slider Control", FX.TARGET_BLEND, 0);
+        addEffect(controller, "ADBE Checkbox Control", FX.AUTO_AIM, 0);
+        addEffect(controller, "ADBE Checkbox Control", FX.AUTO_FOCUS, 0);
+        addEffect(controller, "ADBE Slider Control", FX.FOCUS_OFFSET, 0);
+        addEffect(controller, "ADBE Slider Control", FX.MANUAL_FOCUS, focus);
+
+        addEffect(controller, "ADBE Checkbox Control", FX.DRIFT_ENABLE, 0);
+        addEffect(controller, "ADBE Point3D Control", FX.DRIFT_POS, [15, 10, 5]);
+        addEffect(controller, "ADBE Point3D Control", FX.DRIFT_ROT, [0.25, 0.2, 0.15]);
+        addEffect(controller, "ADBE Slider Control", FX.DRIFT_SPEED, 0.35);
+        addEffect(controller, "ADBE Slider Control", FX.DRIFT_SEED, 1);
+
+        addEffect(controller, "ADBE Dropdown Control", FX.SHAKE_PRESET, 1, [
+            "None",
+            "Subtle",
+            "Handheld",
+            "Action",
+            "Quake",
+            "Custom"
+        ]);
+        addEffect(controller, "ADBE Slider Control", FX.SHAKE_INTENSITY, 100);
+        addEffect(controller, "ADBE Slider Control", FX.SHAKE_SPEED, 100);
+        addEffect(controller, "ADBE Slider Control", FX.SHAKE_SEED, 1);
+        addEffect(controller, "ADBE Point3D Control", FX.CUSTOM_POS, [25, 18, 8]);
+        addEffect(controller, "ADBE Point3D Control", FX.CUSTOM_ROT, [0.7, 0.55, 0.45]);
+        addEffect(controller, "ADBE Slider Control", FX.CUSTOM_FREQ, 2.5);
+
+        addEffect(controller, "ADBE Point3D Control", FX.IMPACT_POS, [75, 55, 20]);
+        addEffect(controller, "ADBE Point3D Control", FX.IMPACT_ROT, [1.8, 1.4, 2.2]);
+        addEffect(controller, "ADBE Slider Control", FX.IMPACT_DECAY, 6);
+        addEffect(controller, "ADBE Slider Control", FX.IMPACT_FREQ, 7);
+
+        addEffect(controller, "ADBE Checkbox Control", FX.LENS_ENABLE, 0);
+        addEffect(controller, "ADBE Slider Control", FX.FOCAL_LENGTH, focal);
+        addEffect(controller, "ADBE Slider Control", FX.ZOOM_OFFSET, 0);
+        addEffect(controller, "ADBE Checkbox Control", FX.DOF_ENABLE,
+            camOptions.property("ADBE Camera Depth of Field").value ? 1 : 0);
+        addEffect(controller, "ADBE Slider Control", FX.APERTURE, aperture);
+        addEffect(controller, "ADBE Slider Control", FX.BLUR_LEVEL, blur);
+    }
+

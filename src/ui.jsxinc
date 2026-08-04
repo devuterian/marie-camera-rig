@@ -1,0 +1,128 @@
+    function buildUI(thisObj) {
+        var panel = thisObj instanceof Panel
+            ? thisObj
+            : new Window("palette", SCRIPT_NAME, undefined, {resizeable: true});
+
+        panel.orientation = "column";
+        panel.alignChildren = ["fill", "top"];
+        panel.spacing = 8;
+        panel.margins = 10;
+
+        var header = panel.add("group");
+        header.orientation = "row";
+        header.alignChildren = ["left", "center"];
+        var title = header.add("statictext", undefined, "marierie Camera Rig");
+        try { title.graphics.font = ScriptUI.newFont(title.graphics.font.name, "BOLD", 14); } catch (e) {}
+        var versionText = header.add("statictext", undefined, "v" + VERSION);
+        versionText.alignment = ["right", "center"];
+
+        var status = panel.add("statictext", undefined, "카메라 또는 컨트롤러를 선택하고 Build / Update를 눌러.");
+        status.alignment = ["fill", "top"];
+
+        var rigPanel = panel.add("panel", undefined, "Rig");
+        rigPanel.orientation = "column";
+        rigPanel.alignChildren = ["fill", "top"];
+        rigPanel.margins = 10;
+
+        var buildButton = rigPanel.add("button", undefined, "Build / Update Rig");
+        buildButton.helpTip = "선택한 카메라에 리그를 만들거나 기존 리그를 복구한다.";
+        buildButton.onClick = function () {
+            var ctrl = buildOrUpdateRig();
+            status.text = ctrl ? "리그 준비됨: " + ctrl.name : "리그 생성 취소 또는 실패";
+        };
+
+        var selectRow = rigPanel.add("group");
+        selectRow.orientation = "row";
+        selectRow.alignChildren = ["fill", "center"];
+        var selectCamButton = selectRow.add("button", undefined, "Select Camera");
+        var selectCtrlButton = selectRow.add("button", undefined, "Select Controls");
+        selectCamButton.onClick = selectCamera;
+        selectCtrlButton.onClick = selectController;
+
+        var targetPanel = panel.add("panel", undefined, "Targets & Focus");
+        targetPanel.orientation = "column";
+        targetPanel.alignChildren = ["fill", "top"];
+        targetPanel.margins = 10;
+
+        var targetCreateRow = targetPanel.add("group");
+        targetCreateRow.orientation = "row";
+        targetCreateRow.alignChildren = ["fill", "center"];
+        var createAButton = targetCreateRow.add("button", undefined, "Create Target A");
+        var createBButton = targetCreateRow.add("button", undefined, "Create Target B");
+        createAButton.onClick = function () { createTarget("A"); };
+        createBButton.onClick = function () { createTarget("B"); };
+
+        var targetAssignRow = targetPanel.add("group");
+        targetAssignRow.orientation = "row";
+        targetAssignRow.alignChildren = ["fill", "center"];
+        var assignAButton = targetAssignRow.add("button", undefined, "Selected → A");
+        var assignBButton = targetAssignRow.add("button", undefined, "Selected → B");
+        assignAButton.helpTip = "현재 선택 레이어를 활성 카메라 리그의 Target A로 지정한다.";
+        assignBButton.helpTip = "현재 선택 레이어를 활성 카메라 리그의 Target B로 지정한다.";
+        assignAButton.onClick = function () { setSelectedLayerAsTarget("A"); };
+        assignBButton.onClick = function () { setSelectedLayerAsTarget("B"); };
+
+        var motionPanel = panel.add("panel", undefined, "Motion");
+        motionPanel.orientation = "column";
+        motionPanel.alignChildren = ["fill", "top"];
+        motionPanel.margins = 10;
+
+        var presetRow1 = motionPanel.add("group");
+        presetRow1.orientation = "row";
+        presetRow1.alignChildren = ["fill", "center"];
+        var noneButton = presetRow1.add("button", undefined, "None");
+        var subtleButton = presetRow1.add("button", undefined, "Subtle");
+        var handheldButton = presetRow1.add("button", undefined, "Handheld");
+        noneButton.onClick = function () { applyPreset(1); };
+        subtleButton.onClick = function () { applyPreset(2); };
+        handheldButton.onClick = function () { applyPreset(3); };
+
+        var presetRow2 = motionPanel.add("group");
+        presetRow2.orientation = "row";
+        presetRow2.alignChildren = ["fill", "center"];
+        var actionButton = presetRow2.add("button", undefined, "Action");
+        var quakeButton = presetRow2.add("button", undefined, "Quake");
+        var impactButton = presetRow2.add("button", undefined, "Add Impact");
+        actionButton.onClick = function () { applyPreset(4); };
+        quakeButton.onClick = function () { applyPreset(5); };
+        impactButton.onClick = addImpactMarker;
+        impactButton.helpTip = "현재 시간에 감쇠되는 충격 마커를 추가한다.";
+
+        var utilityPanel = panel.add("panel", undefined, "Utilities");
+        utilityPanel.orientation = "column";
+        utilityPanel.alignChildren = ["fill", "top"];
+        utilityPanel.margins = 10;
+
+        var utilRow = utilityPanel.add("group");
+        utilRow.orientation = "row";
+        utilRow.alignChildren = ["fill", "center"];
+        var resetButton = utilRow.add("button", undefined, "Reset Controls");
+        var removeButton = utilRow.add("button", undefined, "Remove Rig");
+        resetButton.onClick = resetControls;
+        removeButton.onClick = removeRig;
+
+        var note = panel.add(
+            "statictext",
+            undefined,
+            "키프레임 가능한 값은 [MCR] Controls 레이어의 Effect Controls에 있어.\n" +
+            "Position Offset은 기존 카메라 Position 키프레임에 가산돼.",
+            {multiline: true}
+        );
+        note.alignment = ["fill", "top"];
+
+        panel.onResizing = panel.onResize = function () {
+            this.layout.resize();
+        };
+
+        if (panel instanceof Window) {
+            panel.center();
+            panel.show();
+        } else {
+            panel.layout.layout(true);
+        }
+
+        return panel;
+    }
+
+    buildUI(thisObj);
+})(this);

@@ -1,0 +1,343 @@
+    function buildOrUpdateRig() {
+        var comp = getActiveComp();
+        if (!comp) {
+            alertError("활성 컴포지션을 열어줘.");
+            return null;
+        }
+
+        var camera = getCameraFromContext(comp);
+        if (!camera) {
+            if (!confirm("선택된 카메라가 없어.\n새 카메라를 만들까?")) return null;
+            camera = createCamera(comp);
+        }
+
+        var controller = findControllerForCamera(comp, camera);
+        var foreign = hasForeignExpressions(camera);
+
+        if (!controller && foreign.length > 0) {
+            var message = "카메라에 기존 표현식이 있어:\n\n" +
+                foreign.join(", ") +
+                "\n\n원본 표현식은 컨트롤러에 백업한 뒤 MCR 표현식으로 교체돼. " +
+                "리그 제거 시 복원할 수 있어. 계속할까?";
+            if (!confirm(message)) return null;
+        }
+
+        app.beginUndoGroup(SCRIPT_NAME + " - Build / Update");
+        try {
+            if (!controller) controller = createController(comp, camera);
+            ensureControllerEffects(controller, camera, comp);
+            backupExpressions(controller, camera);
+            applyExpressions(camera, controller);
+
+            controller.selected = true;
+            camera.selected = false;
+            comp.hideShyLayers = false;
+            return controller;
+        } catch (err) {
+            alertError("리그 생성 중 오류:\n" + err.toString());
+            return null;
+        } finally {
+            app.endUndoGroup();
+        }
+    }
+
+    function createTarget(slot) {
+        var comp = getActiveComp();
+        if (!comp) {
+            alertError("활성 컴포지션을 열어줘.");
+            return;
+        }
+
+        var camera = getCameraFromContext(comp);
+        if (!camera) {
+            alertError("카메라나 MCR 컨트롤러를 선택해줘.");
+            return;
+        }
+
+        var controller = findControllerForCamera(comp, camera);
+        if (!controller) controller = buildOrUpdateRig();
+        if (!controller) return;
+
+        app.beginUndoGroup(SCRIPT_NAME + " - Create Target");
+        try {
+            var target = comp.layers.addShape();
+            target.name = TARGET_PREFIX + (slot === "A" ? "A" : "B");
+            target.guideLayer = true;
+            target.threeDLayer = true;
+            target.label = 11;
+            addTargetArtwork(target);
+
+            var transform = camera.property("ADBE Transform Group");
+            var position;
+            try {
+                position = transform.property("ADBE Anchor Point").valueAtTime(comp.time, false);
+                if (!position || position.length < 3) throw new Error("No POI");
+            } catch (e) {
+                position = [comp.width / 2, comp.height / 2, 0];
+            }
+            target.property("ADBE Transform Group").property("ADBE Position").setValue(position);
+            target.moveBefore(controller);
+
+            setEffectValue(controller, slot === "A" ? FX.TARGET_A : FX.TARGET_B, target.index);
+            setEffectValue(controller, FX.AUTO_AIM, 1);
+            setEffectValue(controller, FX.AUTO_FOCUS, 1);
+
+            target.selected = true;
+            controller.selected = false;
+            camera.selected = false;
+        } catch (err) {
+            alertError("타깃 생성 중 오류:\n" + err.toString());
+        } finally {
+            app.endUndoGroup();
+        }
+    }
+
+    function addImpactMarker() {
+        var comp = getActiveComp();
+        if (!comp) {
+            alertError("활성 컴포지션을 열어줘.");
+            return;
+        }
+
+        var camera = getCameraFromContext(comp);
+        if (!camera) {
+            alertError("카메라나 MCR 컨트롤러를 선택해줘.");
+            return;
+        }
+
+        var controller = findControllerForCamera(comp, camera);
+        if (!controller) controller = buildOrUpdateRig();
+        if (!controller) return;
+
+        app.beginUndoGroup(SCRIPT_NAME + " - Impact Marker");
+        try {
+            var marker = new MarkerValue("MCR_IMPACT");
+            marker.label = 9;
+            controller.property("ADBE Marker").setValueAtTime(comp.time, marker);
+            controller.selected = true;
+            camera.selected = false;
+        } catch (err) {
+            alertError("임팩트 마커 생성 중 오류:\n" + err.toString());
+        } finally {
+            app.endUndoGroup();
+        }
+    }
+
+    function applyPreset(index) {
+        var comp = getActiveComp();
+        if (!comp) {
+            alertError("활성 컴포지션을 열어줘.");
+            return;
+        }
+
+        var camera = getCameraFromContext(comp);
+        if (!camera) {
+            alertError("카메라나 MCR 컨트롤러를 선택해줘.");
+            return;
+        }
+
+        var controller = findControllerForCamera(comp, camera);
+        if (!controller) controller = buildOrUpdateRig();
+        if (!controller) return;
+
+        app.beginUndoGroup(SCRIPT_NAME + " - Preset");
+        try {
+            setEffectValue(controller, FX.SHAKE_PRESET, index);
+            if (index > 1) {
+                setEffectValue(controller, FX.SHAKE_INTENSITY, 100);
+                setEffectValue(controller, FX.SHAKE_SPEED, 100);
+            }
+            controller.selected = true;
+            camera.selected = false;
+        } finally {
+            app.endUndoGroup();
+        }
+    }
+
+    function resetControls() {
+        var comp = getActiveComp();
+        if (!comp) {
+            alertError("활성 컴포지션을 열어줘.");
+            return;
+        }
+
+        var camera = getCameraFromContext(comp);
+        if (!camera) {
+            alertError("카메라나 MCR 컨트롤러를 선택해줘.");
+            return;
+        }
+
+        var controller = findControllerForCamera(comp, camera);
+        if (!controller) {
+            alertError("선택한 카메라에 MCR 리그가 없어.");
+            return;
+        }
+
+        app.beginUndoGroup(SCRIPT_NAME + " - Reset");
+        try {
+            setEffectValue(controller, FX.ENABLE, 1);
+            setEffectValue(controller, FX.OFFSET_SPACE, 1);
+            setEffectValue(controller, FX.POSITION, [0, 0, 0]);
+            setEffectValue(controller, FX.ROT_X, 0);
+            setEffectValue(controller, FX.ROT_Y, 0);
+            setEffectValue(controller, FX.ROT_Z, 0);
+            setEffectValue(controller, FX.TARGET_BLEND, 0);
+            setEffectValue(controller, FX.AUTO_AIM, 0);
+            setEffectValue(controller, FX.AUTO_FOCUS, 0);
+            setEffectValue(controller, FX.FOCUS_OFFSET, 0);
+            setEffectValue(controller, FX.DRIFT_ENABLE, 0);
+            setEffectValue(controller, FX.SHAKE_PRESET, 1);
+            setEffectValue(controller, FX.SHAKE_INTENSITY, 100);
+            setEffectValue(controller, FX.SHAKE_SPEED, 100);
+            setEffectValue(controller, FX.ZOOM_OFFSET, 0);
+            setEffectValue(controller, FX.LENS_ENABLE, 0);
+        } finally {
+            app.endUndoGroup();
+        }
+    }
+
+    function restoreExpression(prop, expression) {
+        if (!prop || !prop.canSetExpression) return;
+        try {
+            prop.expression = expression || "";
+        } catch (e) {}
+    }
+
+    function removeRig() {
+        var comp = getActiveComp();
+        if (!comp) {
+            alertError("활성 컴포지션을 열어줘.");
+            return;
+        }
+
+        var camera = getCameraFromContext(comp);
+        if (!camera) {
+            alertError("카메라나 MCR 컨트롤러를 선택해줘.");
+            return;
+        }
+
+        var controller = findControllerForCamera(comp, camera);
+        if (!controller) {
+            alertError("선택한 카메라에 MCR 리그가 없어.");
+            return;
+        }
+
+        if (!confirm("MCR 리그를 제거할까?\n카메라의 기존 표현식 백업이 있으면 복원돼.")) return;
+
+        app.beginUndoGroup(SCRIPT_NAME + " - Remove");
+        try {
+            var backup = readBackup(controller);
+            var map = cameraPropertyMap(camera);
+
+            restoreExpression(map.position, backup.position);
+            restoreExpression(map.xPosition, backup.xPosition);
+            restoreExpression(map.yPosition, backup.yPosition);
+            restoreExpression(map.zPosition, backup.zPosition);
+            restoreExpression(map.pointOfInterest, backup.pointOfInterest);
+            restoreExpression(map.orientation, backup.orientation);
+            restoreExpression(map.xRotation, backup.xRotation);
+            restoreExpression(map.yRotation, backup.yRotation);
+            restoreExpression(map.zRotation, backup.zRotation);
+            restoreExpression(map.zoom, backup.zoom);
+            restoreExpression(map.depthOfField, backup.depthOfField);
+            restoreExpression(map.focusDistance, backup.focusDistance);
+            restoreExpression(map.aperture, backup.aperture);
+            restoreExpression(map.blurLevel, backup.blurLevel);
+
+            controller.remove();
+            camera.selected = true;
+        } catch (err) {
+            alertError("리그 제거 중 오류:\n" + err.toString());
+        } finally {
+            app.endUndoGroup();
+        }
+    }
+
+    function selectCamera() {
+        var comp = getActiveComp();
+        if (!comp) {
+            alertError("활성 컴포지션을 열어줘.");
+            return;
+        }
+        var camera = getCameraFromContext(comp);
+        if (!camera) {
+            alertError("카메라나 MCR 컨트롤러를 선택해줘.");
+            return;
+        }
+        var i;
+        for (i = 1; i <= comp.numLayers; i++) comp.layer(i).selected = false;
+        camera.selected = true;
+    }
+
+    function selectController() {
+        var comp = getActiveComp();
+        if (!comp) {
+            alertError("활성 컴포지션을 열어줘.");
+            return;
+        }
+        var camera = getCameraFromContext(comp);
+        if (!camera) {
+            alertError("카메라나 MCR 컨트롤러를 선택해줘.");
+            return;
+        }
+        var controller = findControllerForCamera(comp, camera);
+        if (!controller) {
+            alertError("선택한 카메라에 MCR 리그가 없어.");
+            return;
+        }
+        var i;
+        for (i = 1; i <= comp.numLayers; i++) comp.layer(i).selected = false;
+        controller.selected = true;
+    }
+
+    function setSelectedLayerAsTarget(slot) {
+        var comp = getActiveComp();
+        if (!comp) {
+            alertError("활성 컴포지션을 열어줘.");
+            return;
+        }
+
+        var selected = comp.selectedLayers;
+        if (selected.length < 1) {
+            alertError("타깃으로 쓸 레이어를 하나 선택해줘.");
+            return;
+        }
+
+        var target = selected[0];
+        var camera = null;
+        var controller = null;
+        var i;
+
+        for (i = 0; i < selected.length; i++) {
+            if (isCamera(selected[i])) camera = selected[i];
+            var c = findCameraForController(comp, selected[i]);
+            if (c) {
+                camera = c;
+                controller = selected[i];
+            }
+        }
+
+        if (!camera) camera = comp.activeCamera;
+        if (!camera || !isCamera(camera)) {
+            alertError("활성 카메라가 없어.");
+            return;
+        }
+
+        if (target === camera || target === controller) {
+            alertError("카메라나 컨트롤러 자체는 타깃으로 지정할 수 없어.");
+            return;
+        }
+
+        if (!controller) controller = findControllerForCamera(comp, camera);
+        if (!controller) controller = buildOrUpdateRig();
+        if (!controller) return;
+
+        app.beginUndoGroup(SCRIPT_NAME + " - Assign Target");
+        try {
+            setEffectValue(controller, slot === "A" ? FX.TARGET_A : FX.TARGET_B, target.index);
+            setEffectValue(controller, FX.AUTO_AIM, 1);
+        } finally {
+            app.endUndoGroup();
+        }
+    }
+

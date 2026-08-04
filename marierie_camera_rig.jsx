@@ -5,4 +5,5 @@
 #include "./src/rig.jsxinc"
 #include "./src/expressions.jsxinc"
 #include "./src/actions.jsxinc"
-#include "./src/ui.jsxinc"
+#include "./src/stability.jsxinc"
+#include "./src/ui_simple.jsxinc"

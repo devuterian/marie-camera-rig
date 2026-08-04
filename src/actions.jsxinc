@@ -236,7 +236,7 @@
         var frameCount = Math.max(1, Math.floor(duration / frameDuration + 0.0001));
         var endTime = startTime + frameCount * frameDuration;
         var message =
-            "작업 영역 " + frameCount + "프레임을 실제 키프레임으로 구울게.\\n\\n" +
+            "작업 영역 " + frameCount + "프레임을 실제 키프레임으로 구울게.\n\n" +
             "MCR 컨트롤은 지워지고, 카메라에는 프레임마다 키가 생겨. " +
             "마음에 안 들면 바로 Undo 하면 돼. 계속할까?";
         if (!confirm(message)) return;
@@ -280,9 +280,9 @@
             }
             camera.selected = true;
 
-            alert("Bake 끝!\\n작업 영역 " + frameCount + "프레임을 카메라 키로 바꿨어.");
+            alert("Bake 끝!\n작업 영역 " + frameCount + "프레임을 카메라 키로 바꿨어.");
         } catch (err) {
-            alertError("Bake 하는 중에 문제가 생겼어:\\n" + err.toString());
+            alertError("Bake 하는 중에 문제가 생겼어:\n" + err.toString());
         } finally {
             app.endUndoGroup();
         }

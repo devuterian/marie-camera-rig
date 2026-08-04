@@ -144,21 +144,21 @@ PF_Err ParamsSetup(
     PF_ADD_BUTTON(
         "카메라 연결",
         "연결하기",
-        PF_PUI_NONE,
+        0,
         PF_ParamFlag_SUPERVISE,
         mcr::kConnectButtonDiskId);
 
     PF_ADD_BUTTON(
         "Bake",
         "작업 영역 Bake",
-        PF_PUI_NONE,
+        0,
         PF_ParamFlag_SUPERVISE,
         mcr::kBakeButtonDiskId);
 
     PF_ADD_BUTTON(
         "리그 지우기",
         "지우기",
-        PF_PUI_NONE,
+        0,
         PF_ParamFlag_SUPERVISE,
         mcr::kRemoveButtonDiskId);
 

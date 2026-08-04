@@ -27,21 +27,21 @@
         var soft = [1.0, 0.58, 0.74];
 
         var body = root.addProperty("ADBE Vector Group");
-        body.name = "Camera Body";
+        body.name = "카메라 몸체";
         var bodyContents = body.property("ADBE Vectors Group");
         makePath(bodyContents, [
             [-55, -34], [30, -34], [30, 34], [-55, 34]
         ], true, color, 4);
 
         var lens = root.addProperty("ADBE Vector Group");
-        lens.name = "Lens";
+        lens.name = "렌즈";
         var lensContents = lens.property("ADBE Vectors Group");
         makePath(lensContents, [
             [30, -20], [62, -34], [62, 34], [30, 20]
         ], true, color, 4);
 
         var cross = root.addProperty("ADBE Vector Group");
-        cross.name = "Crosshair";
+        cross.name = "조준점";
         var crossContents = cross.property("ADBE Vectors Group");
         makePath(crossContents, [[-12, 0], [12, 0]], false, soft, 2);
         makePath(crossContents, [[0, -12], [0, 12]], false, soft, 2);
@@ -61,7 +61,7 @@
 
         var color = [0.35, 0.82, 1.0];
         var cross = root.addProperty("ADBE Vector Group");
-        cross.name = "Target";
+        cross.name = "타깃";
         var contents = cross.property("ADBE Vectors Group");
         makePath(contents, [[-35, 0], [35, 0]], false, color, 3);
         makePath(contents, [[0, -35], [0, 35]], false, color, 3);
@@ -117,7 +117,7 @@
     }
 
     function createCamera(comp) {
-        var camera = comp.layers.addCamera("MCR Camera", [comp.width / 2, comp.height / 2]);
+        var camera = comp.layers.addCamera("MCR 카메라", [comp.width / 2, comp.height / 2]);
         var zoom = camera.property("ADBE Camera Options Group")
             .property("ADBE Camera Zoom").value;
         camera.property("ADBE Transform Group")
@@ -131,7 +131,7 @@
 
     function createController(comp, camera) {
         var controller = comp.layers.addShape();
-        controller.name = CTRL_PREFIX + camera.name + " | Controls";
+        controller.name = CTRL_PREFIX + camera.name + " | 컨트롤";
         controller.guideLayer = true;
         controller.threeDLayer = true;
         controller.label = 9;

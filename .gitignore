@@ -1,0 +1,11 @@
+.DS_Store
+
+# Native plug-in build output
+plugin/build/
+plugin/dist/
+plugin/*.rsrc
+
+# Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/

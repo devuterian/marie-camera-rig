@@ -1,0 +1,267 @@
+    function makePath(groupContents, vertices, closed, color, width) {
+        var pathGroup = groupContents.addProperty("ADBE Vector Shape - Group");
+        var shape = new Shape();
+        shape.vertices = vertices;
+        shape.inTangents = [];
+        shape.outTangents = [];
+        var i;
+        for (i = 0; i < vertices.length; i++) {
+            shape.inTangents.push([0, 0]);
+            shape.outTangents.push([0, 0]);
+        }
+        shape.closed = closed;
+        pathGroup.property("ADBE Vector Shape").setValue(shape);
+
+        var stroke = groupContents.addProperty("ADBE Vector Graphic - Stroke");
+        stroke.property("ADBE Vector Stroke Color").setValue(color);
+        stroke.property("ADBE Vector Stroke Width").setValue(width);
+        stroke.property("ADBE Vector Stroke Opacity").setValue(100);
+        return pathGroup;
+    }
+
+    function addControllerArtwork(layer) {
+        var root = layer.property("ADBE Root Vectors Group");
+        if (!root || root.numProperties > 0) return;
+
+        var color = [1.0, 0.24, 0.52];
+        var soft = [1.0, 0.58, 0.74];
+
+        var body = root.addProperty("ADBE Vector Group");
+        body.name = "Camera Body";
+        var bodyContents = body.property("ADBE Vectors Group");
+        makePath(bodyContents, [
+            [-55, -34], [30, -34], [30, 34], [-55, 34]
+        ], true, color, 4);
+
+        var lens = root.addProperty("ADBE Vector Group");
+        lens.name = "Lens";
+        var lensContents = lens.property("ADBE Vectors Group");
+        makePath(lensContents, [
+            [30, -20], [62, -34], [62, 34], [30, 20]
+        ], true, color, 4);
+
+        var cross = root.addProperty("ADBE Vector Group");
+        cross.name = "Crosshair";
+        var crossContents = cross.property("ADBE Vectors Group");
+        makePath(crossContents, [[-12, 0], [12, 0]], false, soft, 2);
+        makePath(crossContents, [[0, -12], [0, 12]], false, soft, 2);
+
+        var circle = crossContents.addProperty("ADBE Vector Shape - Ellipse");
+        circle.property("ADBE Vector Ellipse Size").setValue([34, 34]);
+        var circleStroke = crossContents.addProperty("ADBE Vector Graphic - Stroke");
+        circleStroke.property("ADBE Vector Stroke Color").setValue(soft);
+        circleStroke.property("ADBE Vector Stroke Width").setValue(2);
+
+        layer.property("ADBE Transform Group").property("ADBE Scale").setValue([70, 70, 70]);
+    }
+
+    function addTargetArtwork(layer) {
+        var root = layer.property("ADBE Root Vectors Group");
+        if (!root || root.numProperties > 0) return;
+
+        var color = [0.35, 0.82, 1.0];
+        var cross = root.addProperty("ADBE Vector Group");
+        cross.name = "Target";
+        var contents = cross.property("ADBE Vectors Group");
+        makePath(contents, [[-35, 0], [35, 0]], false, color, 3);
+        makePath(contents, [[0, -35], [0, 35]], false, color, 3);
+
+        var circle = contents.addProperty("ADBE Vector Shape - Ellipse");
+        circle.property("ADBE Vector Ellipse Size").setValue([48, 48]);
+        var stroke = contents.addProperty("ADBE Vector Graphic - Stroke");
+        stroke.property("ADBE Vector Stroke Color").setValue(color);
+        stroke.property("ADBE Vector Stroke Width").setValue(3);
+    }
+
+    function findControllerForCamera(comp, camera) {
+        var i, layer, fx;
+        for (i = 1; i <= comp.numLayers; i++) {
+            layer = comp.layer(i);
+            fx = getEffect(layer, FX.CAMERA);
+            if (fx) {
+                try {
+                    if (fx.property(1).value === camera.index) return layer;
+                } catch (e) {}
+            }
+        }
+        return null;
+    }
+
+    function findCameraForController(comp, controller) {
+        var fx = getEffect(controller, FX.CAMERA);
+        if (!fx) return null;
+        try {
+            var index = fx.property(1).value;
+            if (index > 0 && index <= comp.numLayers && isCamera(comp.layer(index))) {
+                return comp.layer(index);
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    function getCameraFromContext(comp) {
+        var selected = comp.selectedLayers;
+        var i, camera;
+
+        for (i = 0; i < selected.length; i++) {
+            if (isCamera(selected[i])) return selected[i];
+        }
+
+        for (i = 0; i < selected.length; i++) {
+            camera = findCameraForController(comp, selected[i]);
+            if (camera) return camera;
+        }
+
+        if (comp.activeCamera && isCamera(comp.activeCamera)) return comp.activeCamera;
+        return null;
+    }
+
+    function createCamera(comp) {
+        var camera = comp.layers.addCamera("MCR Camera", [comp.width / 2, comp.height / 2]);
+        var zoom = camera.property("ADBE Camera Options Group")
+            .property("ADBE Camera Zoom").value;
+        camera.property("ADBE Transform Group")
+            .property("ADBE Position")
+            .setValue([comp.width / 2, comp.height / 2, -zoom]);
+        camera.property("ADBE Transform Group")
+            .property("ADBE Anchor Point")
+            .setValue([comp.width / 2, comp.height / 2, 0]);
+        return camera;
+    }
+
+    function createController(comp, camera) {
+        var controller = comp.layers.addShape();
+        controller.name = CTRL_PREFIX + camera.name + " | Controls";
+        controller.guideLayer = true;
+        controller.threeDLayer = true;
+        controller.label = 9;
+        controller.shy = false;
+        controller.moveBefore(camera);
+        controller.property("ADBE Transform Group").property("ADBE Position")
+            .setValue([comp.width / 2, comp.height / 2, 0]);
+        addControllerArtwork(controller);
+        ensureControllerEffects(controller, camera, comp);
+        return controller;
+    }
+
+    function propExpression(prop) {
+        if (!prop || !prop.canSetExpression || !prop.expressionEnabled) return "";
+        try {
+            return prop.expression || "";
+        } catch (e) {
+            return "";
+        }
+    }
+
+    function encode(value) {
+        try {
+            return encodeURIComponent(value || "");
+        } catch (e) {
+            return "";
+        }
+    }
+
+    function decode(value) {
+        try {
+            return decodeURIComponent(value || "");
+        } catch (e) {
+            return "";
+        }
+    }
+
+    function cameraPropertyMap(camera) {
+        var transform = camera.property("ADBE Transform Group");
+        var options = camera.property("ADBE Camera Options Group");
+        var position = transform.property("ADBE Position");
+        var map = {};
+
+        map.posSeparated = position.dimensionsSeparated ? "1" : "0";
+        map.position = position;
+        if (position.dimensionsSeparated) {
+            map.xPosition = transform.property("ADBE Position_0");
+            map.yPosition = transform.property("ADBE Position_1");
+            map.zPosition = transform.property("ADBE Position_2");
+        }
+
+        map.pointOfInterest = transform.property("ADBE Anchor Point");
+        map.orientation = transform.property("ADBE Orientation");
+        map.xRotation = transform.property("ADBE Rotate X");
+        map.yRotation = transform.property("ADBE Rotate Y");
+        map.zRotation = transform.property("ADBE Rotate Z");
+
+        map.zoom = options.property("ADBE Camera Zoom");
+        map.depthOfField = options.property("ADBE Camera Depth of Field");
+        map.focusDistance = options.property("ADBE Camera Focus Distance");
+        map.aperture = options.property("ADBE Camera Aperture");
+        map.blurLevel = options.property("ADBE Camera Blur Level");
+
+        try {
+            map.autoOrient = String(camera.autoOrient);
+        } catch (e) {
+            map.autoOrient = "";
+        }
+        return map;
+    }
+
+    function backupExpressions(controller, camera) {
+        if (controller.comment && controller.comment.indexOf("MCR_BACKUP_BEGIN") >= 0) {
+            return;
+        }
+
+        var map = cameraPropertyMap(camera);
+        var keys = [
+            "position", "xPosition", "yPosition", "zPosition",
+            "pointOfInterest", "orientation",
+            "xRotation", "yRotation", "zRotation",
+            "zoom", "depthOfField", "focusDistance", "aperture", "blurLevel"
+        ];
+        var lines = ["MCR_BACKUP_BEGIN", "version=" + VERSION];
+        var i, key;
+        lines.push("posSeparated=" + map.posSeparated);
+        lines.push("autoOrient=" + encode(map.autoOrient));
+
+        for (i = 0; i < keys.length; i++) {
+            key = keys[i];
+            lines.push(key + "=" + encode(propExpression(map[key])));
+        }
+        lines.push("MCR_BACKUP_END");
+        controller.comment = (controller.comment ? controller.comment + "\n" : "") + lines.join("\n");
+    }
+
+    function readBackup(controller) {
+        var result = {};
+        var comment = controller.comment || "";
+        var start = comment.indexOf("MCR_BACKUP_BEGIN");
+        var end = comment.indexOf("MCR_BACKUP_END");
+        if (start < 0 || end < start) return result;
+
+        var block = comment.substring(start, end).split(/\r?\n/);
+        var i, eq, key, value;
+        for (i = 0; i < block.length; i++) {
+            eq = block[i].indexOf("=");
+            if (eq < 0) continue;
+            key = block[i].substring(0, eq);
+            value = block[i].substring(eq + 1);
+            result[key] = decode(value);
+        }
+        return result;
+    }
+
+    function hasForeignExpressions(camera) {
+        var map = cameraPropertyMap(camera);
+        var keys = [
+            "position", "xPosition", "yPosition", "zPosition",
+            "pointOfInterest", "orientation",
+            "xRotation", "yRotation", "zRotation",
+            "zoom", "depthOfField", "focusDistance", "aperture", "blurLevel"
+        ];
+        var foreign = [];
+        var i, expr;
+        for (i = 0; i < keys.length; i++) {
+            if (!map[key]) continue;
+            expr = propExpression(map[key]);
+            if (expr && expr.indexOf("// MCR ") < 0) foreign.push(keys[i]);
+        }
+        return foreign;
+    }
+

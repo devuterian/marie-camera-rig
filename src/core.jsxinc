@@ -1,65 +1,65 @@
 /*
 marierie Camera Rig
-Original implementation for Adobe After Effects 2020+
+After Effects 2020+용 카메라 리그
 MIT License
 
-Design goals:
-- One clean Shape Layer controller instead of a stack of nulls.
-- Preserve native camera keyframes and add offsets procedurally.
-- Two-target blending, auto aim, auto focus, lens override, drift, shake, and impact markers.
-- Dockable ScriptUI panel with one-click build/update/repair/remove actions.
-- Existing expressions are backed up into the controller layer comment and restored on removal.
+만든 방향:
+- null을 여러 개 쌓지 않고 Shape Layer 컨트롤러 하나로 정리한다.
+- 카메라에 이미 찍힌 키프레임과 기본값을 그대로 두고 오프셋만 더한다.
+- 타깃 전환, 자동 조준, 자동 초점, 렌즈, 드리프트, 흔들림, 충격을 한곳에서 다룬다.
+- 패널에서 만들기, 새로고침, Bake, 초기화, 제거까지 끝낼 수 있게 한다.
+- 기존 표현식은 컨트롤러 Comment에 백업하고 리그 제거 시 되돌린다.
 */
 
 (function marierieCameraRig(thisObj) {
     var SCRIPT_NAME = "marierie Camera Rig";
-    var VERSION = "1.0.0";
+    var VERSION = "1.1.0";
     var SIG = "// MCR " + VERSION;
     var CTRL_PREFIX = "[MCR] ";
-    var TARGET_PREFIX = "[MCR Target] ";
+    var TARGET_PREFIX = "[MCR 타깃] ";
 
     var FX = {
-        CAMERA: "MCR | Camera Layer",
-        ENABLE: "MCR | Enable Rig",
-        OFFSET_SPACE: "MCR | Offset Space",
-        POSITION: "MCR | Position Offset",
-        ROT_X: "MCR | Rotation X",
-        ROT_Y: "MCR | Rotation Y",
-        ROT_Z: "MCR | Rotation Z",
+        CAMERA: "MCR | 카메라",
+        ENABLE: "MCR | 리그 켜기",
+        OFFSET_SPACE: "MCR | 이동 기준",
+        POSITION: "MCR | 위치 더하기",
+        ROT_X: "MCR | 회전 X",
+        ROT_Y: "MCR | 회전 Y",
+        ROT_Z: "MCR | 회전 Z",
 
-        TARGET_A: "MCR | Target A",
-        TARGET_B: "MCR | Target B",
-        TARGET_BLEND: "MCR | Target Blend",
-        AUTO_AIM: "MCR | Auto Aim",
-        AUTO_FOCUS: "MCR | Auto Focus",
-        FOCUS_OFFSET: "MCR | Focus Offset",
-        MANUAL_FOCUS: "MCR | Manual Focus",
+        TARGET_A: "MCR | 타깃 A",
+        TARGET_B: "MCR | 타깃 B",
+        TARGET_BLEND: "MCR | 타깃 섞기",
+        AUTO_AIM: "MCR | 타깃 바라보기",
+        AUTO_FOCUS: "MCR | 자동 초점",
+        FOCUS_OFFSET: "MCR | 초점 보정",
+        MANUAL_FOCUS: "MCR | 직접 초점 거리",
 
-        DRIFT_ENABLE: "MCR | Drift",
-        DRIFT_POS: "MCR | Drift Position",
-        DRIFT_ROT: "MCR | Drift Rotation",
-        DRIFT_SPEED: "MCR | Drift Speed",
-        DRIFT_SEED: "MCR | Drift Seed",
+        DRIFT_ENABLE: "MCR | 느린 흔들림",
+        DRIFT_POS: "MCR | 느린 위치 흔들림",
+        DRIFT_ROT: "MCR | 느린 회전 흔들림",
+        DRIFT_SPEED: "MCR | 느린 흔들림 속도",
+        DRIFT_SEED: "MCR | 느린 흔들림 시드",
 
-        SHAKE_PRESET: "MCR | Shake Preset",
-        SHAKE_INTENSITY: "MCR | Shake Intensity",
-        SHAKE_SPEED: "MCR | Shake Speed",
-        SHAKE_SEED: "MCR | Shake Seed",
-        CUSTOM_POS: "MCR | Custom Position",
-        CUSTOM_ROT: "MCR | Custom Rotation",
-        CUSTOM_FREQ: "MCR | Custom Frequency",
+        SHAKE_PRESET: "MCR | 흔들림 프리셋",
+        SHAKE_INTENSITY: "MCR | 흔들림 세기",
+        SHAKE_SPEED: "MCR | 흔들림 속도",
+        SHAKE_SEED: "MCR | 흔들림 시드",
+        CUSTOM_POS: "MCR | 직접 위치 흔들림",
+        CUSTOM_ROT: "MCR | 직접 회전 흔들림",
+        CUSTOM_FREQ: "MCR | 직접 흔들림 빈도",
 
-        IMPACT_POS: "MCR | Impact Position",
-        IMPACT_ROT: "MCR | Impact Rotation",
-        IMPACT_DECAY: "MCR | Impact Decay",
-        IMPACT_FREQ: "MCR | Impact Frequency",
+        IMPACT_POS: "MCR | 충격 위치",
+        IMPACT_ROT: "MCR | 충격 회전",
+        IMPACT_DECAY: "MCR | 충격 감쇠",
+        IMPACT_FREQ: "MCR | 충격 진동수",
 
-        LENS_ENABLE: "MCR | Lens Override",
-        FOCAL_LENGTH: "MCR | Focal Length (mm)",
-        ZOOM_OFFSET: "MCR | Zoom Offset",
-        DOF_ENABLE: "MCR | Enable DOF",
-        APERTURE: "MCR | Aperture",
-        BLUR_LEVEL: "MCR | Blur Level"
+        LENS_ENABLE: "MCR | 렌즈 직접 설정",
+        FOCAL_LENGTH: "MCR | 초점 거리 (mm)",
+        ZOOM_OFFSET: "MCR | 줌 보정",
+        DOF_ENABLE: "MCR | 심도 켜기",
+        APERTURE: "MCR | 조리개",
+        BLUR_LEVEL: "MCR | 블러 양"
     };
 
     function alertError(message) {
@@ -155,8 +155,8 @@ Design goals:
 
         addEffect(controller, "ADBE Checkbox Control", FX.ENABLE, 1);
         addEffect(controller, "ADBE Dropdown Control", FX.OFFSET_SPACE, 1, [
-            "World",
-            "Camera Local"
+            "월드",
+            "카메라 기준"
         ]);
         addEffect(controller, "ADBE Point3D Control", FX.POSITION, [0, 0, 0]);
         addEffect(controller, "ADBE Angle Control", FX.ROT_X, 0);
@@ -178,12 +178,12 @@ Design goals:
         addEffect(controller, "ADBE Slider Control", FX.DRIFT_SEED, 1);
 
         addEffect(controller, "ADBE Dropdown Control", FX.SHAKE_PRESET, 1, [
-            "None",
-            "Subtle",
-            "Handheld",
-            "Action",
-            "Quake",
-            "Custom"
+            "없음",
+            "은은하게",
+            "핸드헬드",
+            "강하게",
+            "지진",
+            "직접 설정"
         ]);
         addEffect(controller, "ADBE Slider Control", FX.SHAKE_INTENSITY, 100);
         addEffect(controller, "ADBE Slider Control", FX.SHAKE_SPEED, 100);

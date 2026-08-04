@@ -16,30 +16,35 @@
         var versionText = header.add("statictext", undefined, "v" + VERSION);
         versionText.alignment = ["right", "center"];
 
-        var status = panel.add("statictext", undefined, "카메라 또는 컨트롤러를 선택하고 Build / Update를 눌러.");
+        var status = panel.add(
+            "statictext",
+            undefined,
+            "카메라를 골라도 되고 그냥 눌러도 돼. 없으면 새로 만들어.",
+            {multiline: true}
+        );
         status.alignment = ["fill", "top"];
 
-        var rigPanel = panel.add("panel", undefined, "Rig");
+        var rigPanel = panel.add("panel", undefined, "카메라 리그");
         rigPanel.orientation = "column";
         rigPanel.alignChildren = ["fill", "top"];
         rigPanel.margins = 10;
 
-        var buildButton = rigPanel.add("button", undefined, "Build / Update Rig");
-        buildButton.helpTip = "선택한 카메라에 리그를 만들거나 기존 리그를 복구한다.";
+        var buildButton = rigPanel.add("button", undefined, "리그 만들기 / 새로고침");
+        buildButton.helpTip = "선택한 카메라에 붙여. 카메라가 없으면 새 카메라부터 만들어.";
         buildButton.onClick = function () {
             var ctrl = buildOrUpdateRig();
-            status.text = ctrl ? "리그 준비됨: " + ctrl.name : "리그 생성 취소 또는 실패";
+            status.text = ctrl ? "준비 끝. 컨트롤 레이어를 골라서 값을 만지면 돼." : "리그를 만들지 못했어.";
         };
 
         var selectRow = rigPanel.add("group");
         selectRow.orientation = "row";
         selectRow.alignChildren = ["fill", "center"];
-        var selectCamButton = selectRow.add("button", undefined, "Select Camera");
-        var selectCtrlButton = selectRow.add("button", undefined, "Select Controls");
+        var selectCamButton = selectRow.add("button", undefined, "카메라 선택");
+        var selectCtrlButton = selectRow.add("button", undefined, "컨트롤 선택");
         selectCamButton.onClick = selectCamera;
         selectCtrlButton.onClick = selectController;
 
-        var targetPanel = panel.add("panel", undefined, "Targets & Focus");
+        var targetPanel = panel.add("panel", undefined, "타깃과 초점");
         targetPanel.orientation = "column";
         targetPanel.alignChildren = ["fill", "top"];
         targetPanel.margins = 10;
@@ -47,22 +52,22 @@
         var targetCreateRow = targetPanel.add("group");
         targetCreateRow.orientation = "row";
         targetCreateRow.alignChildren = ["fill", "center"];
-        var createAButton = targetCreateRow.add("button", undefined, "Create Target A");
-        var createBButton = targetCreateRow.add("button", undefined, "Create Target B");
+        var createAButton = targetCreateRow.add("button", undefined, "타깃 A 만들기");
+        var createBButton = targetCreateRow.add("button", undefined, "타깃 B 만들기");
         createAButton.onClick = function () { createTarget("A"); };
         createBButton.onClick = function () { createTarget("B"); };
 
         var targetAssignRow = targetPanel.add("group");
         targetAssignRow.orientation = "row";
         targetAssignRow.alignChildren = ["fill", "center"];
-        var assignAButton = targetAssignRow.add("button", undefined, "Selected → A");
-        var assignBButton = targetAssignRow.add("button", undefined, "Selected → B");
-        assignAButton.helpTip = "현재 선택 레이어를 활성 카메라 리그의 Target A로 지정한다.";
-        assignBButton.helpTip = "현재 선택 레이어를 활성 카메라 리그의 Target B로 지정한다.";
+        var assignAButton = targetAssignRow.add("button", undefined, "선택 레이어 → A");
+        var assignBButton = targetAssignRow.add("button", undefined, "선택 레이어 → B");
+        assignAButton.helpTip = "지금 고른 레이어를 타깃 A로 써.";
+        assignBButton.helpTip = "지금 고른 레이어를 타깃 B로 써.";
         assignAButton.onClick = function () { setSelectedLayerAsTarget("A"); };
         assignBButton.onClick = function () { setSelectedLayerAsTarget("B"); };
 
-        var motionPanel = panel.add("panel", undefined, "Motion");
+        var motionPanel = panel.add("panel", undefined, "카메라 흔들림");
         motionPanel.orientation = "column";
         motionPanel.alignChildren = ["fill", "top"];
         motionPanel.margins = 10;
@@ -70,9 +75,9 @@
         var presetRow1 = motionPanel.add("group");
         presetRow1.orientation = "row";
         presetRow1.alignChildren = ["fill", "center"];
-        var noneButton = presetRow1.add("button", undefined, "None");
-        var subtleButton = presetRow1.add("button", undefined, "Subtle");
-        var handheldButton = presetRow1.add("button", undefined, "Handheld");
+        var noneButton = presetRow1.add("button", undefined, "없음");
+        var subtleButton = presetRow1.add("button", undefined, "은은하게");
+        var handheldButton = presetRow1.add("button", undefined, "핸드헬드");
         noneButton.onClick = function () { applyPreset(1); };
         subtleButton.onClick = function () { applyPreset(2); };
         handheldButton.onClick = function () { applyPreset(3); };
@@ -80,32 +85,36 @@
         var presetRow2 = motionPanel.add("group");
         presetRow2.orientation = "row";
         presetRow2.alignChildren = ["fill", "center"];
-        var actionButton = presetRow2.add("button", undefined, "Action");
-        var quakeButton = presetRow2.add("button", undefined, "Quake");
-        var impactButton = presetRow2.add("button", undefined, "Add Impact");
+        var actionButton = presetRow2.add("button", undefined, "강하게");
+        var quakeButton = presetRow2.add("button", undefined, "지진");
+        var impactButton = presetRow2.add("button", undefined, "충격 추가");
         actionButton.onClick = function () { applyPreset(4); };
         quakeButton.onClick = function () { applyPreset(5); };
         impactButton.onClick = addImpactMarker;
-        impactButton.helpTip = "현재 시간에 감쇠되는 충격 마커를 추가한다.";
+        impactButton.helpTip = "현재 프레임에 짧게 튀는 충격을 넣어.";
 
-        var utilityPanel = panel.add("panel", undefined, "Utilities");
-        utilityPanel.orientation = "column";
-        utilityPanel.alignChildren = ["fill", "top"];
-        utilityPanel.margins = 10;
+        var finishPanel = panel.add("panel", undefined, "마무리");
+        finishPanel.orientation = "column";
+        finishPanel.alignChildren = ["fill", "top"];
+        finishPanel.margins = 10;
 
-        var utilRow = utilityPanel.add("group");
+        var bakeButton = finishPanel.add("button", undefined, "작업 영역을 키프레임으로 Bake");
+        bakeButton.helpTip = "작업 영역의 최종 결과를 프레임마다 카메라 키로 굽고 MCR 컨트롤을 지워.";
+        bakeButton.onClick = bakeRig;
+
+        var utilRow = finishPanel.add("group");
         utilRow.orientation = "row";
         utilRow.alignChildren = ["fill", "center"];
-        var resetButton = utilRow.add("button", undefined, "Reset Controls");
-        var removeButton = utilRow.add("button", undefined, "Remove Rig");
+        var resetButton = utilRow.add("button", undefined, "값 초기화");
+        var removeButton = utilRow.add("button", undefined, "리그 지우기");
         resetButton.onClick = resetControls;
         removeButton.onClick = removeRig;
 
         var note = panel.add(
             "statictext",
             undefined,
-            "키프레임 가능한 값은 [MCR] Controls 레이어의 Effect Controls에 있어.\n" +
-            "Position Offset은 기존 카메라 Position 키프레임에 가산돼.",
+            "키프레임으로 만질 값은 [MCR] 컨트롤 레이어의 Effect Controls에 있어.\n" +
+            "카메라에 이미 찍힌 키는 그대로 두고 MCR 값만 위에 더해져.",
             {multiline: true}
         );
         note.alignment = ["fill", "top"];

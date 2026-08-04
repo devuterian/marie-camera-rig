@@ -50,7 +50,7 @@ if [[ -z "${BUNDLE_PATH}" ]]; then
     exit 1
 fi
 
-"${SCRIPT_DIR}/verify.sh" "${BUNDLE_PATH}"
+bash "${SCRIPT_DIR}/verify.sh" "${BUNDLE_PATH}"
 
 echo
 echo "빌드 끝:"

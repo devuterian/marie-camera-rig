@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  marierie Camera Rig pseudo effect authoring source
+
+  이 XML은 최종 사용자 설치물이 아니다.
+  개발용 AE에서 한 번 pseudo effect를 만든 뒤 .ffx로 저장하기 위한 원본 정의다.
+  최종 배포에서는 self-contained .ffx만 JSX가 applyPreset()으로 적용한다.
+-->
+<Effect
+    matchname="Pseudo/marierie_camera_rig_v1"
+    name="$$$/MCR/EffectName=marierie Camera Rig">
+
+    <Group name="$$$/MCR/Group/Camera=기본 이동">
+        <Layer name="$$$/MCR/Camera=카메라" default_self="false" />
+        <Checkbox name="$$$/MCR/Enabled=리그 켜기" checked="true" />
+        <Popup
+            name="$$$/MCR/OffsetSpace=이동 기준"
+            default="1"
+            popup_string="월드|카메라 기준"
+            CANNOT_TIME_VARY="true" />
+        <Point3D
+            name="$$$/MCR/PositionOffset=위치 더하기"
+            default_x="0"
+            default_y="0"
+            default_z="0" />
+        <Angle name="$$$/MCR/RotationX=회전 X" default="0" />
+        <Angle name="$$$/MCR/RotationY=회전 Y" default="0" />
+        <Angle name="$$$/MCR/RotationZ=회전 Z" default="0" />
+    </Group>
+
+    <Group name="$$$/MCR/Group/Target=타깃과 초점">
+        <Layer name="$$$/MCR/TargetA=타깃 A" default_self="false" />
+        <Layer name="$$$/MCR/TargetB=타깃 B" default_self="false" />
+        <Slider
+            name="$$$/MCR/TargetBlend=타깃 섞기"
+            default="0"
+            valid_min="0"
+            valid_max="100"
+            slider_min="0"
+            slider_max="100"
+            precision="1" />
+        <Checkbox name="$$$/MCR/AutoAim=타깃 바라보기" checked="false" />
+        <Checkbox name="$$$/MCR/AutoFocus=자동 초점" checked="false" />
+        <Slider
+            name="$$$/MCR/FocusOffset=초점 보정"
+            default="0"
+            valid_min="-100000"
+            valid_max="100000"
+            slider_min="-2000"
+            slider_max="2000"
+            precision="1" />
+        <Slider
+            name="$$$/MCR/ManualFocus=직접 초점 거리"
+            default="1000"
+            valid_min="0"
+            valid_max="1000000"
+            slider_min="0"
+            slider_max="10000"
+            precision="1" />
+    </Group>
+
+    <Group name="$$$/MCR/Group/Motion=자동 움직임">
+        <Checkbox name="$$$/MCR/DriftEnabled=느린 흔들림" checked="false" />
+        <Point3D
+            name="$$$/MCR/DriftPosition=느린 위치 흔들림"
+            default_x="15"
+            default_y="10"
+            default_z="5" />
+        <Point3D
+            name="$$$/MCR/DriftRotation=느린 회전 흔들림"
+            default_x="0.25"
+            default_y="0.2"
+            default_z="0.15" />
+        <Slider
+            name="$$$/MCR/DriftSpeed=느린 흔들림 속도"
+            default="0.35"
+            valid_min="0"
+            valid_max="20"
+            slider_min="0"
+            slider_max="5"
+            precision="2" />
+        <Slider
+            name="$$$/MCR/DriftSeed=느린 흔들림 시드"
+            default="1"
+            valid_min="0"
+            valid_max="99999"
+            slider_min="0"
+            slider_max="100"
+            precision="0" />
+
+        <Popup
+            name="$$$/MCR/ShakePreset=흔들림 프리셋"
+            default="1"
+            popup_string="없음|은은하게|핸드헬드|강하게|지진|직접 설정"
+            CANNOT_TIME_VARY="true" />
+        <Slider
+            name="$$$/MCR/ShakeIntensity=흔들림 세기"
+            default="100"
+            valid_min="0"
+            valid_max="1000"
+            slider_min="0"
+            slider_max="300"
+            precision="1" />
+        <Slider
+            name="$$$/MCR/ShakeSpeed=흔들림 속도"
+            default="100"
+            valid_min="0"
+            valid_max="1000"
+            slider_min="0"
+            slider_max="300"
+            precision="1" />
+        <Slider
+            name="$$$/MCR/ShakeSeed=흔들림 시드"
+            default="1"
+            valid_min="0"
+            valid_max="99999"
+            slider_min="0"
+            slider_max="100"
+            precision="0" />
+        <Point3D
+            name="$$$/MCR/CustomPosition=직접 위치 흔들림"
+            default_x="25"
+            default_y="18"
+            default_z="8" />
+        <Point3D
+            name="$$$/MCR/CustomRotation=직접 회전 흔들림"
+            default_x="0.7"
+            default_y="0.55"
+            default_z="0.45" />
+        <Slider
+            name="$$$/MCR/CustomFrequency=직접 흔들림 빈도"
+            default="2.5"
+            valid_min="0"
+            valid_max="100"
+            slider_min="0"
+            slider_max="20"
+            precision="2" />
+    </Group>
+
+    <Group name="$$$/MCR/Group/Lens=렌즈">
+        <Checkbox name="$$$/MCR/LensEnabled=렌즈 직접 설정" checked="false" />
+        <Slider
+            name="$$$/MCR/FocalLength=초점 거리 (mm)"
+            default="50"
+            valid_min="1"
+            valid_max="1000"
+            slider_min="8"
+            slider_max="300"
+            precision="1" />
+        <Slider
+            name="$$$/MCR/ZoomOffset=줌 보정"
+            default="0"
+            valid_min="-1000000"
+            valid_max="1000000"
+            slider_min="-2000"
+            slider_max="2000"
+            precision="1" />
+        <Checkbox name="$$$/MCR/DofEnabled=심도 켜기" checked="false" />
+        <Slider
+            name="$$$/MCR/Aperture=조리개"
+            default="36"
+            valid_min="0"
+            valid_max="10000"
+            slider_min="0"
+            slider_max="500"
+            precision="1" />
+        <Slider
+            name="$$$/MCR/BlurLevel=블러 양"
+            default="100"
+            valid_min="0"
+            valid_max="1000"
+            slider_min="0"
+            slider_max="300"
+            precision="1" />
+    </Group>
+
+    <!--
+      pseudo effect/FFX에는 JSX를 직접 실행하는 진짜 버튼이 없다.
+      아래 체크박스는 패널이 열려 있을 때 scheduleTask 감시기가
+      누름을 감지하고 실행한 뒤 즉시 false로 되돌리는 순간 스위치다.
+    -->
+    <Group name="$$$/MCR/Group/Actions=빠른 실행">
+        <Checkbox
+            name="$$$/MCR/ActionImpact=⚡ 충격 추가"
+            checked="false"
+            CANNOT_TIME_VARY="true" />
+        <Checkbox
+            name="$$$/MCR/ActionReset=↺ 값 초기화"
+            checked="false"
+            CANNOT_TIME_VARY="true" />
+        <Checkbox
+            name="$$$/MCR/ActionBake=● Bake 요청"
+            checked="false"
+            CANNOT_TIME_VARY="true" />
+        <Checkbox
+            name="$$$/MCR/ActionRemove=✕ 리그 지우기"
+            checked="false"
+            CANNOT_TIME_VARY="true" />
+    </Group>
+</Effect>
